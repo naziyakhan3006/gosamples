@@ -1,0 +1,83 @@
+package main
+
+import (
+	"fmt"
+	"regexp"
+	"encoding/json"
+	"strings"
+	//"strconv"
+
+)
+
+type LogMessage struct{
+	Timestamp string `json:"@timestamp"`
+	Version string `json:"@version"`
+	Message string`json:"message"`
+	Host string `json:"@fields.host"`
+	Severity string `json:"@fields.severity"`
+	Facility string `json:"@fields.facility"`
+	Procid string `json:"@fields.procid"`
+	Privatecloud_id string `json:"@fields.privatecloud_id"`
+	Privatecloud_name string `json:"@fields.privatecloud_name"`
+	Alias string `json:"@fields.alias"`
+	Company_name string `json:"@fields.company_name"`
+	Region_id string `json:"@fields.region_id"`
+	TargetHostname string
+}
+
+func main() {
+	
+        msg := "{\"@timestamp\":\"2017-10-05T20:36:08.314797+00:00\",\"@version\":\"1\",\"message\":\" Event [222449] [1-1] [2017-10-05T20:36:08.314592Z] [vim.event.EnteredMaintenanceModeEvent] [info] [VSPHERE.LOCAL\\Administrator] [Datacenter] [222438] [Host esx03.pod.eng.cs in Datacenter has entered maintenance mode]\",\"@fields.host\":\"vcenter\",\"@fields.severity\":\"info\",\"@fields.facility\":\"user\",\"@fields.procid\":\"3051\",\"@fields.privatecloud_id\":\"1c84aca2-8f6a-11e7-bb31-be2e44b06b34\",\"@fields.privatecloud_name\":\"pc1\",\"@fields.alias\":\"+12cloudsimple\",\"@fields.company_name\":\"cloudsimple\",\"@fields.region_id\":\"e1b1f051-1862-49b9-9925-2d631fbbb02d\"}"
+        
+        msg = strings.Replace(msg, "\\", "\\\\", -1)
+
+        re := regexp.MustCompile(`Host ([^ ]+) in Datacenter has entered maintenance mode`)
+	matches := re.FindStringSubmatch(msg)
+
+	fmt.Println(len(matches))
+	fmt.Println(matches[1])
+
+        rmsg := "{\"@timestamp\":\"2017-10-05T20:04:47.243877+00:00\",\"@version\":\"1\",\"message\":\" Event [222375] [1-1] [2017-10-05T20:04:47.243695Z] [vim.event.ExitMaintenanceModeEvent] [info] [VSPHERE.LOCAL\\Administrator] [Datacenter] [222370] [Host esx03.pod.eng.cs in Datacenter has exited maintenance mode]\",\"@fields.host\":\"vcenter\",\"@fields.severity\":\"info\",\"@fields.facility\":\"user\",\"@fields.procid\":\"3051\",\"@fields.privatecloud_id\":\"1c84aca2-8f6a-11e7-bb31-be2e44b06b34\",\"@fields.privatecloud_name\":\"pc1\",\"@fields.alias\":\"+12cloudsimple\",\"@fields.company_name\":\"cloudsimple\",\"@fields.region_id\":\"e1b1f051-1862-49b9-9925-2d631fbbb02d\"}"	
+	re = regexp.MustCompile(`Host ([^ ]+) in ([^ ]+) has exited maintenance mode`)
+	matches = re.FindStringSubmatch(rmsg)
+
+	fmt.Println(len(matches))
+	fmt.Println(matches[1])
+	fmt.Println(matches[2])
+
+	
+        msg = "{\"@timestamp\":\"2017-10-10T19:05:10.346300+00:00\",\"@version\":\"1\",\"message\":\" Event [236146] [1-1] [2017-10-10T19:05:10.346134Z] [vim.event.EnteredMaintenanceModeEvent] [info] [VSPHERE.LOCAL\\Administrator] [Datacenter] [236139] [Host esx02.pod.eng.cs in Datacenter has entered maintenance mode]\",\"@fields.host\":\"vcenter\",\"@fields.severity\":\"info\",\"@fields.facility\":\"user\",\"@fields.procid\":\"3051\",\"@fields.privatecloud_id\":\"1c84aca2-8f6a-11e7-bb31-be2e44b06b34\",\"@fields.privatecloud_name\":\"pc1\",\"@fields.alias\":\"+12cloudsimple\",\"@fields.company_name\":\"cloudsimple\",\"@fields.region_id\":\"e1b1f051-1862-49b9-9925-2d631fbbb02d\"}"
+	msg = strings.Replace(msg, "\\", "\\\\", -1)
+	
+	logmsg := LogMessage{}
+	
+	//s, _ := strconv.Unquote(string([]byte(msg)))
+
+	r := strings.NewReader(msg)
+	d := json.NewDecoder(r)
+        
+        fmt.Println(d.Decode(&logmsg))	
+	
+	fmt.Println(logmsg)
+
+	//_ = json.Unmarshal([]byte(s), &msg)
+	
+	logmsg.TargetHostname = "Naziya"
+	fmt.Println(logmsg)
+	
+	
+	msg = "{\"@timestamp\":\"2017-10-10T21:32:18.915297+00:00\",\"@version\":\"1\",\"message\":\" Event [236367] [1-1] [2017-10-10T21:32:18.914366Z] [vim.event.AlarmSnmpCompletedEvent] [info] [] [Datacenter] [236367] [Alarm 'Host connection failure': an SNMP trap for entity esx02.pod.eng.cs was sent]\",\"@fields.host\":\"vcenter\",\"@fields.severity\":\"info\",\"@fields.facility\":\"user\",\"@fields.procid\":\"3051\",\"@fields.privatecloud_id\":\"1c84aca2-8f6a-11e7-bb31-be2e44b06b34\",\"@fields.privatecloud_name\":\"pc1\",\"@fields.alias\":\"+12cloudsimple\",\"@fields.company_name\":\"cloudsimple\",\"@fields.region_id\":\"e1b1f051-1862-49b9-9925-2d631fbbb02d\"}"
+	re = regexp.MustCompile(`Alarm 'Host connection failure': an SNMP trap for entity ([^ ]+) was sent`)
+	matches = re.FindStringSubmatch(msg)
+        fmt.Println(matches[1])
+
+	msg = "{\"@timestamp\":\"2017-10-10T21:49:10.174202+00:00\",\"@version\":\"1\",\"message\":\" Event [236560] [1-1] [2017-10-10T21:49:10.173891Z] [vim.event.HostShutdownEvent] [info] [VSPHERE.LOCAL\\Administrator] [Datacenter] [236559] [Shut down of esx02.pod.eng.cs in Datacenter: ]\",\"@fields.host\":\"vcenter\",\"@fields.severity\":\"info\",\"@fields.facility\":\"user\",\"@fields.procid\":\"3051\",\"@fields.privatecloud_id\":\"1c84aca2-8f6a-11e7-bb31-be2e44b06b34\",\"@fields.privatecloud_name\":\"pc1\",\"@fields.alias\":\"+12cloudsimple\",\"@fields.company_name\":\"cloudsimple\",\"@fields.region_id\":\"e1b1f051-1862-49b9-9925-2d631fbbb02d\"}"
+	re = regexp.MustCompile(`Shut down of ([^ ]+) in Datacenter`)
+	matches = re.FindStringSubmatch(msg)
+        fmt.Println(matches[1])
+	
+	
+	
+}	
+	
+	
