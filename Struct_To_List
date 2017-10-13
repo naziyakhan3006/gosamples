@@ -1,0 +1,31 @@
+package main
+
+import (
+	"fmt"
+	"github.com/fatih/structs"
+	"strings"
+)
+
+type LM struct{
+	Timestamp string `json:"@timestamp"`
+	Version string `json:"@version"`
+	Message string`json:"message"`
+}
+
+func main() {
+
+
+	n := structs.Names(LM{})
+	fmt.Println(n)
+
+	var fieldmap map[string]struct{}
+	fieldmap = make(map[string]struct{}, len(n))
+	for _, s := range n{
+		fieldmap[strings.ToLower(s)] = struct {}{}
+	}
+
+	fmt.Println(fieldmap)
+}
+
+
+
