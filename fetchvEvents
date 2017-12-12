@@ -1,0 +1,118 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net/url"
+	"os"
+	"reflect"
+	"time"
+
+	"github.com/vmware/govmomi"
+	"github.com/vmware/govmomi/object"
+	"github.com/vmware/govmomi/view"
+	"github.com/vmware/govmomi/vim25/methods"
+	"github.com/vmware/govmomi/vim25/mo"
+	"github.com/vmware/govmomi/vim25/types"
+	"github.com/vmware/govmomi/find"
+)
+
+type HistoryCollector struct {
+	*object.HistoryCollector
+}
+
+func main() {
+	// Creating a connection context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Parsing URL
+	url, err := url.Parse("https://administrator%40vsphere.local:<yourpassword>@<yourvcenter>/sdk")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		os.Exit(1)
+	}
+
+	// Connecting to vCenter
+	c, err := govmomi.NewClient(ctx, url, true)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		os.Exit(1)
+	}
+
+	finder := find.NewFinder(c.Client, true)
+	dc, err := finder.DefaultDatacenter(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		os.Exit(1)
+	}
+
+	finder.SetDatacenter(dc)
+	m := view.NewManager(c.Client)
+	v, err := m.CreateContainerView(ctx, dc.Reference(), []string{"HostSystem"}, true)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var hosts []mo.HostSystem
+	err = v.Retrieve(ctx, []string{"HostSystem"}, nil, &hosts)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, hs := range hosts {
+
+		fmt.Printf("\nHost: %s", hs.Name)
+
+		if hs.Name == "esx02.pod.eng.cs" {
+			hcRef := hs.Reference()
+			end := time.Now().UTC()
+			start := end.UTC().Add(-240 * time.Minute)
+
+			eventManager := c.ServiceContent.EventManager
+			filter := types.EventFilterSpec{
+				Entity: &types.EventFilterSpecByEntity{
+					Entity:    hcRef,
+					Recursion: types.EventFilterSpecRecursionOptionAll,
+				},
+				Time: &types.EventFilterSpecByTime{
+					BeginTime: &start,
+					EndTime:   &end,
+				},
+				EventTypeId: []string{"TaskEvent"},
+			}
+
+			req := types.CreateCollectorForEvents{
+				This:   eventManager.Reference(),
+				Filter: filter,
+			}
+			res, err := methods.CreateCollectorForEvents(ctx, m.Client(), &req)
+			if err != nil {
+				log.Fatal(err)
+			}
+			h := &HistoryCollector{
+				HistoryCollector: object.NewHistoryCollector(c.Client, res.Returnval),
+			}
+			var event mo.EventHistoryCollector
+			h.Properties(ctx, h.Reference(), []string{"latestPage"}, &event)
+			for _, e := range event.LatestPage {
+				if reflect.TypeOf(e).String() == "*types.TaskEvent" {
+					//var taskevent types.BaseTaskEvent
+					taskevent, ok := e.(types.BaseTaskEvent)
+					if ok {
+						fmt.Printf("taskevent :: %#v\n", taskevent.GetTaskEvent().Info.DescriptionId)
+						if taskevent.GetTaskEvent().Info.DescriptionId == "HostSystem.reboot" {
+							fmt.Printf("Found a reboot taskevent")
+						}
+					}
+
+				}
+
+			}
+		}
+	}
+
+	defer v.Destroy(ctx)
+
+}
